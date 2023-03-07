@@ -5,30 +5,16 @@ import os
 import xlsxwriter
 import zipfile
 
-
-# Probando nueva regex para ver si extrae todos los datos.
 estados_financieros_rgx = re.compile(r"""<pgc-[\w\d-]*:(\w+) [\w\d="]+ contextRef="(\w.\w+)" unitRef="\w+"[\w\d\_\=\s\"]*>(-?\d*\.{0,1}\d+)</pgc-[\w\d-]*:[\w]+>""")
-
 
 pgc_regex       = re.compile(r"""<link:schemaRef xlink:type="simple" xlink:href="http://www.icac.meh.es/taxonomia/[\w\d-]+/pgc07-([\w]+[-]{0,1}[\w]+).xsd" />""")
 instant_regex   = re.compile(r"<xbrli:instant>([\w-]+)</xbrli:instant>")
 dates_regex     = re.compile(r"<xbrli:startDate>([\w-]+)</xbrli:startDate>|<xbrli:endDate>([\w-]+)</xbrli:endDate>")
 
 nif_regex       = re.compile(r"""<dgi-est-gen:IdentifierValue contextRef="D.ACTUAL">([\d\w]+)</dgi-est-gen:IdentifierValue>""")
-
-# name_regex_og      = re.compile(r"""<dgi-est-gen:LegalNameValue contextRef="D.ACTUAL">([\d\w\.\-\,\&\;\(\) ]+)</dgi-est-gen:LegalNameValue>""")
-# name_regex      = re.compile(r"""<dgi-est-gen:LegalNameValue contextRef="D.ACTUAL">([\d\w\.\-\,\& ]+)</dgi-est-gen:LegalNameValue>""")
 name_regex      = re.compile(r"""<dgi-est-gen:LegalNameValue contextRef="D.ACTUAL">([^<>]+)<\/dgi-est-gen:LegalNameValue>""")
-
-# city_regex      = re.compile(r"""<dgi-est-gen:MunicipalityName contextRef="D.ACTUAL">([\w\'\/ \-()]+)</dgi-est-gen:MunicipalityName>""")
 city_regex      = re.compile(r"""<dgi-est-gen:MunicipalityName contextRef="D.ACTUAL"[^<>]*>([^<>]+)</dgi-est-gen:MunicipalityName>""")
-
 cp_regex        = re.compile(r"""<dgi-est-gen:ZipPostalCode contextRef="D.ACTUAL">([\d]+)</dgi-est-gen:ZipPostalCode>""")
-
-
-
-taxonomies = ['normal', 'pymes', 'abreviado-completo', 'abreviado', 'mixto', 'pymes-completo']
-
 
 
 fields = {
@@ -126,14 +112,6 @@ fields = {
 }
 
 
-def get_taxonomy(filename):
-    with open(filename+"\\DEPOSITO.xbrl", encoding="utf8") as f:
-        file = f.read()    
-
-    pgc = re.findall(pgc_regex, file)[0]
-
-    return pgc
-
 
 def final_func(paths, output_name):
     if len(paths) == 0:
@@ -174,16 +152,6 @@ def final_func(paths, output_name):
                 i_actual, i_anterior = instant_list[0], instant_list[1]
             else:
                 raise Exception("Ha habido un error, en el formato del documento debe dehaber al menos 2 instantes de fechas para I.ACTUAL, I.ANTERIOR")
-
-            dates_list = re.findall(dates_regex, file)
-
-            dates_list = [''.join(x).split()[0] for x in dates_list]
-
-            if len(dates_list) >= 4:
-                start_date_actual, end_date_actual = dates_list[0], dates_list[1]
-                start_date_anterior, end_date_anterior = dates_list[2], dates_list[3]
-            else:
-                raise Exception("Ha habido un error, en el formato del documento debe dehaber al menos 4 fechas para D.ACTUAL start y end, D.ANTERIOR start y end")
 
             estados_financieros_list = re.findall(estados_financieros_rgx, file)
 
@@ -276,128 +244,6 @@ def final_func(paths, output_name):
     return
 
 
-
-def parse_file(filename):
-    with open(filename+"\\DEPOSITO.xbrl", encoding="utf8") as f:
-        file = f.read()
-
-    # pgc = re.findall(pgc_regex, file)[0]
-
-    instant_list = re.findall(instant_regex, file)
-
-    if len(instant_list) >= 2:
-        i_actual, i_anterior = instant_list[0], instant_list[1]
-    else:
-        raise Exception("Ha habido un error, en el formato del documento debe dehaber al menos 2 instantes de fechas para I.ACTUAL, I.ANTERIOR")
-
-
-    dates_list = re.findall(dates_regex, file)
-
-    dates_list = [''.join(x).split()[0] for x in dates_list]
-
-    if len(dates_list) >= 4:
-        start_date_actual, end_date_actual = dates_list[0], dates_list[1]
-        start_date_anterior, end_date_anterior = dates_list[2], dates_list[3]
-    else:
-        raise Exception("Ha habido un error, en el formato del documento debe dehaber al menos 4 fechas para D.ACTUAL start y end, D.ANTERIOR start y end")
-
-    # print(start_date_actual, end_date_actual)
-    # print(start_date_anterior, end_date_anterior)
-
-
-    estados_financieros_list = re.findall(estados_financieros_rgx, file)
-    
-    
-    nif = re.findall(nif_regex, file)[0]
-    name = re.findall(name_regex, file)[0]
-    city = re.findall(city_regex, file)[0]
-    cp_list = re.findall(cp_regex, file)
-    if len(cp_list) > 0:
-        cp = cp_list[0]
-    anyo_actual = i_actual.split("-")[0]
-    anyo_anterior = i_anterior.split("-")[0]
-
-    # print(f"Año actual {anyo_actual}    Año anterior {anyo_anterior}")
-
-    # if name == "SAT EL CUARTAZO" and (anyo_actual == "2020"):
-    #     print(filename)
-    #     return
-    # else:
-    #     return
-
-    row, col = 0, 0
-
-    off_col = 5
-
-    # workbook = xlsxwriter.Workbook('Cuentas_' + str(nif) + "_"  + str(anyo_actual) + "_" + str(anyo_anterior) + '.xlsx')
-
-    # workbook = xlsxwriter.Workbook(filename+'Cuentas_' + str(nif) + "_"  + str(anyo_actual) + "_" + str(anyo_anterior) + '.xlsx')
-    
-    # workbook = xlsxwriter.Workbook('Cuentas_' + str(nif) + "_"  + str(anyo_anterior) + '.xlsx')
-
-    # worksheet = workbook.add_worksheet("Test_Balance")
-    
-    #   worksheet.write(row, column, content)
-
-    # worksheet.write(1, 0, "Cooperativa")
-    # worksheet.write(2, 0, name)
-    # worksheet.write(3, 0, name)
-
-    # worksheet.write(1, 1, "Ciudad")
-    # worksheet.write(2, 1, city)
-    # worksheet.write(3, 1, city)
-
-    # worksheet.write(1, 2, "CIF")
-    # worksheet.write(2, 2, nif)
-    # worksheet.write(3, 2, nif)
-
-    # worksheet.write(1, 3, "Código postal")
-    # worksheet.write(2, 3, cp)
-    # worksheet.write(3, 3, cp)
-
-    # worksheet.write(1, 4, "Año")
-    # worksheet.write(2, 4, anyo_actual)
-    # worksheet.write(3, 4, anyo_actual)
-
-    # for key in fields:
-    #     worksheet.write(1, off_col + fields[key], key)
-    
-    print(f"Nombre: {name}, Año actual: {anyo_actual}, Año anterior: {anyo_anterior}")  
-    
-    for elem in estados_financieros_list:
-        apartado, contexto, cantidad = elem
-
-        # fields es el diccionario con todos los campos del archivo
-        
-        # Campos extra: Nombre de la cooperativa, Identificador de la cooperativa, código postal, 
-        # ciudad, año de las cuentas
-
-        # print(apartado, contexto, cantidad)
-
-        if apartado == "PerdidasGananciasOperacionesContinuadasImporteNetoCifraNegocios":
-            print(apartado, contexto, cantidad)
-
-        # try:
-        #     # worksheet.write(1, off_col + fields[apartado], apartado)
-        #     fields[apartado]
-        # except:
-        #     continue
-        # if contexto == "I.ACTUAL":
-            # print("worksheet.write(1, " + str(fields[apartado]) + ", " + str(cantidad) + ")")
-            # worksheet.write(2, off_col + fields[apartado], float(cantidad))
-        # else:
-            # print("worksheet.write(2, " + str(fields[apartado]) + ", " + str(cantidad) + ")")
-            # worksheet.write(3, off_col + fields[apartado], float(cantidad))
-        # print()
-        
-    
-    
-    # workbook.close()
-    f.close()
-    
-    pass
-
-
 def path_to_files(origin):
     res = []
     def fast_scandir(dirname):
@@ -410,34 +256,6 @@ def path_to_files(origin):
     return res
 
 
-def list_files_taxonomy(paths):
-    path_taxonomies_normal, path_taxonomies_pymes, path_taxonomies_abreviado_completo, path_taxonomies_abreviado, path_taxonomies_mixto, path_taxonomies_pymes_completo = [], [], [], [], [], []
-    
-    for filename in paths:
-        with open(filename+"\\DEPOSITO.xbrl", encoding="utf8") as f:
-            file = f.read()
-    
-        pgc_regex = re.compile(r"""<link:schemaRef xlink:type="simple" xlink:href="http://www.icac.meh.es/taxonomia/[\w\d-]+/pgc07-([\w]+[-]{0,1}[\w]+).xsd" />""")
-
-        pgc = re.findall(pgc_regex, file)[0]
-
-        if pgc == 'normal':
-            path_taxonomies_normal.append(filename)
-        elif pgc == 'pymes':
-            path_taxonomies_pymes.append(filename)
-        elif pgc == 'abreviado-completo':
-            path_taxonomies_abreviado_completo.append(filename)
-        elif pgc == 'abreviado':
-            path_taxonomies_abreviado.append(filename)
-        elif pgc == 'mixto':
-            path_taxonomies_mixto.append(filename)
-        else:
-            path_taxonomies_pymes_completo.append(filename)
-            
-
-    return path_taxonomies_normal, path_taxonomies_pymes, path_taxonomies_abreviado_completo, path_taxonomies_abreviado, path_taxonomies_mixto, path_taxonomies_pymes_completo
-
-
 def unzip_folders(origin):
     res = []
     def fast_scandir(dirname):
@@ -446,9 +264,6 @@ def unzip_folders(origin):
                 fast_scandir(f.path)
             elif f.name.count(".zip") > 0 or f.name.count(".ZIP") > 0:
                 res.append(f.path)
-            # elif f.name.count(".pdf") > 0:
-                # os.remove(f.path)
-                # pass
     fast_scandir(origin)
     
     for p in res:
@@ -458,27 +273,6 @@ def unzip_folders(origin):
 
 
 if __name__ == '__main__':
-    # taxonomies = ['normal', 'pymes', 'abreviado-completo', 'abreviado', 'mixto', 'pymes-completo']
-    
-    # unzip_folders("datos\\RM Castellón documentos")
-
-    # PATHS VALENCIA
-    # paths = path_to_files("datos\\Coop_agroalimentarias")
-    # paths.reverse()
-    # final_func(paths, "Cuentas_Valencia")
-
-    
-    # PATHS CASTELLON
-    # paths = path_to_files("datos\\RM Castellón")
-    # paths.reverse()
-    # final_func(paths, "Cuentas_Castellon")
-    
-    # PATHS ALICANTE
-    # paths = path_to_files("datos\\RM_Alicante")
-    # paths.reverse()
-    # final_func(paths, "Cuentas_Alicante")
-
-
     parser = argparse.ArgumentParser(description='Transformar cuentas de formato .XBRL a .xlsx')
     parser.add_argument('dircuentas', metavar='dircuentas', type=str,
                         help='Carpeta con las cuentas de la cooperativa')
